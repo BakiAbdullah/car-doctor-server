@@ -3,6 +3,7 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
+const jwt = require('jsonwebtoken')
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -28,6 +29,18 @@ async function run() {
     const serviceCollection = client.db("carDoctor").collection("services");
     const bookingCollection = client.db("carDoctor").collection("bookings");
 
+    // JWT Token Generate Api
+    app.post('/jwt', (req, res)=>{
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      console.log(token)
+      res.send({token})
+    })
+
+    // Services routes
     //? To READ Service data & Show in the UI (READ)
     app.get("/services", async (req, res) => {
       const cursor = serviceCollection.find();
@@ -48,7 +61,7 @@ async function run() {
       res.send(result);
     });
 
-    //Bookings API
+    //Bookings routes API
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
       console.log(booking);
