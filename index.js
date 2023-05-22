@@ -36,34 +36,35 @@ const client = new MongoClient(uri, {
 //   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error, decoded)=>{
 //     if(error){
 //       return res.status(403).send({error: true, message:'unauthorized access'})
-//     } 
+//     }
 //     req.decoded = decoded;
 //     next();
 //   })
 // };
 
-const verifyJWT = (req, res, next)=>{
+const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
-  console.log(authorization)
-  if(!authorization){
-    return res.status(401).send({error: true, message: "Unauthorized User"})
+  console.log(authorization);
+  if (!authorization) {
+    return res.status(401).send({ error: true, message: "Unauthorized User" });
   }
-  const token = authorization.split(' ')[1]
-  console.log('Token inside Verify JWT', token)
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
-    if(err){
-      return res.status(401).send({ error: true, message: "Unauthorized access" });
+  const token = authorization.split(" ")[1];
+  console.log("Token inside Verify JWT", token);
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res
+        .status(401)
+        .send({ error: true, message: "Unauthorized access" });
     }
     req.decoded = decoded;
     next();
-  })
-
-}
+  });
+};
 
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const serviceCollection = client.db("carDoctor").collection("services");
     const bookingCollection = client.db("carDoctor").collection("bookings");
@@ -73,16 +74,30 @@ async function run() {
       const user = req.body;
       console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: '1h',
+        expiresIn: "1h",
       });
       console.log(token);
       res.send({ token });
     });
 
-    // Services routes
-    //? To READ Service data & Show in the UI (READ)
+    // Services routes (Sorting by Price)
+    // Todo: To READ Service data & Show in the UI (READ)
     app.get("/services", async (req, res) => {
-      const cursor = serviceCollection.find();
+      const sort = req.query.sort; // Cilent Side theke Query Niye akhane Asbe
+      const search = req.query.search;
+      console.log(search);
+
+      const query = { title: { $regex: search, $options: "i" } };
+      // query for Car Services that have a Price less than $100
+      // TODO: const query = { price: { $gt: 50, $lte:150 } };
+
+      const options = {
+        // sort matched documents in descending order by rating
+        sort: {
+          price: sort === "ascending" ? 1 : -1,
+        },
+      };
+      const cursor = serviceCollection.find(query, options);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -109,12 +124,12 @@ async function run() {
     });
 
     // Get some Booking data from database by Query Parameter
-    app.get("/bookings", verifyJWT,  async (req, res) => {
-      const decoded = req.decoded
+    app.get("/bookings", verifyJWT, async (req, res) => {
+      const decoded = req.decoded;
       console.log("Came back after verify", decoded);
 
-      if(decoded.email !== req.query.email){
-        return res.status(403).send({error: 1, message: "forbidden access"})
+      if (decoded.email !== req.query.email) {
+        return res.status(403).send({ error: 1, message: "forbidden access" });
       }
       // console.log(req.headers.authorization);
       let query = {};
